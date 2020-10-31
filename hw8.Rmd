@@ -1,0 +1,130 @@
+---
+title: "<center>Assignment8<center>"
+author: "<center>Guandi Xu<center>"
+date: "<center>10/30/2020<center>"
+output: pdf_document
+---
+
+
+## 5.3.3 Rejection Sampling
+
+#### 1. Show the result
+
+As given, the O-U process is:
+$$
+dr(t) = \alpha (b-r(t))dt + \sigma dW(t)
+$$
+According to the Ito formula:
+$$
+dV(t) = \frac{\partial V}{\partial t}dt + \frac{\partial V}{\partial r(t)}dr(t) + \frac{1}{2} \frac{\partial ^2 V}{\partial r(t)^2} dr(t)^2
+$$
+Let $V(t) = \exp(\alpha t)(r(t) - b)$,
+then we have 
+$\frac{\partial V}{\partial t} = \alpha \exp(\alpha t)(r(t) - b)$, 
+$\frac{\partial V}{\partial r(t)} = \exp(\alpha t)$, 
+$\frac{\partial^2 V}{\partial r(t)^2} = 0$, 
+Therefore, we can get,
+$$
+dV(t) = \alpha \exp(\alpha t)(r(t)-b)dt + \exp(\alpha t)dr(t)
+$$
+$$
+dV(t) = \sigma \exp(\alpha t) dW(t)
+$$
+Then we can take the integral from $t$ to $t + \Delta$
+$$
+\int_t^{t+\Delta} dV(u) = \int_t^{t+\Delta} \sigma \exp(\alpha u)dW(u)
+$$
+From the left hand side, we can get
+$$
+\int_t^{t+\Delta} dV(u) = \exp[\alpha(t+\Delta)] (r(t + \Delta) -b) - \exp(\alpha t)(r(t) - b)
+$$
+Then, we can try to take the $r(t+\Delta)$ out and calculate the result:
+$$
+r(t + \Delta) - b = \exp(-\alpha \Delta)(r(t) - b) + \int_t^{t+\Delta} \sigma \exp[-\alpha (t + \Delta -u)] dW(u) \\
+r(t + \Delta) = b + \exp(-\alpha \Delta)(r(t) - b) + \int_t^{t+\Delta} \sigma \exp[-\alpha (t + \Delta -u)] dW(u)
+$$
+According to the property of the Brownian Motion, we know that
+$$
+\int_t^{t+\Delta} \sigma \exp[-\alpha (t+\Delta-u)] dW(u) \sim N(0, \int_t^{t+\Delta} \sigma^2 \exp(2*[-\alpha (t+\Delta-u)]) dW(u) )
+$$
+So, we can get that 
+$$
+r(t+\Delta)=b+e^{-\alpha\Delta}(r(t)-b)+N[0,\int_t^{t+\Delta}\sigma^2 e^{-2\alpha(t+\Delta-u)}du] \\
+r(t+\Delta)=e^{-\alpha\Delta}r(t)+b(1-e^{-\alpha\Delta})+\frac{\sigma}{\sqrt{2\alpha}}\sqrt{1-e^{-2\alpha\Delta}}Z
+$$
+
+#### 2. Transition Distribution
+
+```{r}
+ou <- function(alpha,sigma, b){
+  r <- rep(0,500)
+  r[1] <- 1
+  t <- 500
+  delta <- 1/500
+for (i in 2:500){
+  r[i] <- exp(-alpha)*r[i-1]+b*(1-exp(-alpha))+
+    (sigma/sqrt(2*alpha))*sqrt(1-exp(-2*alpha))*rnorm(1)
+}
+  return(r)
+}
+##For example
+plot(ou(0.1,0.1,-5))
+##Aggregate
+par(mfrow=c(3,2))
+plot(ou(0.1,0.1,-5));plot(ou(0.1,0.2,-5));plot(ou(0.1,0.5,-5))
+plot(ou(1,0.1,-5));plot(ou(1,0.2,-5));plot(ou(1,0.5,-5))
+par(mfrow=c(3,2))
+plot(ou(5,0.1,-5));plot(ou(5,0.2,-5));plot(ou(5,0.5,-5))
+plot(ou(0.1,0.1,5));plot(ou(0.1,0.2,5));plot(ou(0.1,0.5,5))
+par(mfrow=c(3,2))
+plot(ou(1,0.1,5));plot(ou(1,0.2,5));plot(ou(1,0.5,5))
+plot(ou(5,0.1,5));plot(ou(5,0.2,5));plot(ou(5,0.5,5))
+```
+Here we can see that r(t) increases towards 5 and decreases towards -5. which means b determines the target position, $\alpha$ determines the speed going to b, and $\sigma$ determines the variation.
+
+#### 3. Use Euler-Maruyama Method
+
+Euler–Maruyama method is:
+$$
+Y_{n+1}=Y_n + a(Y_n)\Delta t+b(Y_n)\Delta W_n
+$$
+In our O-U process, T=1, number of steps is $n=\frac{1}{\delta}$, $a(Y_n)=\alpha (b-r(t))$, and $b(Y_n)=\sigma$.
+We can set $r(0)=r(t_0)=0$, our goal is sampling $r(1)=r(t_{n+1})$, n={1,2,10,100}.
+```{r}
+euler <- function(delta,alpha,sigma,b){
+  n <- 1/delta
+  r <- rep(0,n+1)
+  r[1] <- 1
+  for (i in 2:(n+1)){
+    r[i] <- r[i-1]+ alpha * (b-r[i-1]) * delta + sigma * rnorm(1,0,delta)
+  }
+  r[n+1]
+}
+delta <- c(1,0.5,0.1,0.01)
+x <- matrix(0,4,1000)
+for (j in 1:4) {
+  for (k in 1:1000) {
+    ##We choose b=1 so that it is martingale
+    ##r(1) should have mean=1
+    x[j,k] <- euler(delta[j],1,0.1,1)
+  }
+}
+plot(density(x[1,]),main = "delta=1")
+lines(seq(0.5,1.5,0.01),dnorm(seq(0.5,1.5,0.01),1,0.1),col="red")
+legend("topleft", c("True","Estimated"), col = c("red","black"),cex = 1,lwd = 1)
+plot(density(x[2,]),main = "delta=0.5")
+lines(seq(0.5,1.5,0.01),dnorm(seq(0.5,1.5,0.01),1,0.1),col="red")
+legend("topleft", c("True","Estimated"), col = c("red","black"),cex = 1,lwd = 1)
+plot(density(x[3,]),main = "delta=0.1")
+lines(seq(0.5,1.5,0.01),dnorm(seq(0.5,1.5,0.01),1,0.1),col="red")
+legend("topleft", c("True","Estimated"), col = c("red","black"),cex = 1,lwd = 1)
+plot(density(x[4,]),main = "delta=0.01")
+lines(seq(0.5,1.5,0.01),dnorm(seq(0.5,1.5,0.01),1,0.1),col="red")
+legend("topleft", c("True","Estimated"), col = c("red","black"),cex = 1,lwd = 1)
+
+```
+
+From the graphs showed above, we can clearly see that when $a(Y_n)=\alpha (b-r(t))=0$, this SDE became martingale. And more steps we take, higher density it gets, which means more accruate.
+
+
+
