@@ -2,6 +2,10 @@
 title: "<center>Assignment8<center>"
 author: "<center>Guandi Xu<center>"
 date: "<center>10/30/2020<center>"
+
+documentclass: article
+papersize: letter
+fontsize: 11pt
 output: pdf_document
 ---
 
@@ -40,7 +44,9 @@ $$
 $$
 Then, we can try to take the $r(t+\Delta)$ out and calculate the result:
 $$
-r(t + \Delta) - b = \exp(-\alpha \Delta)(r(t) - b) + \int_t^{t+\Delta} \sigma \exp[-\alpha (t + \Delta -u)] dW(u) \\
+r(t + \Delta) - b = \exp(-\alpha \Delta)(r(t) - b) + \int_t^{t+\Delta} \sigma \exp[-\alpha (t + \Delta -u)] dW(u)
+$$
+$$
 r(t + \Delta) = b + \exp(-\alpha \Delta)(r(t) - b) + \int_t^{t+\Delta} \sigma \exp[-\alpha (t + \Delta -u)] dW(u)
 $$
 According to the property of the Brownian Motion, we know that
@@ -49,7 +55,9 @@ $$
 $$
 So, we can get that 
 $$
-r(t+\Delta)=b+e^{-\alpha\Delta}(r(t)-b)+N[0,\int_t^{t+\Delta}\sigma^2 e^{-2\alpha(t+\Delta-u)}du] \\
+r(t+\Delta)=b+e^{-\alpha\Delta}(r(t)-b)+N[0,\int_t^{t+\Delta}\sigma^2 e^{-2\alpha(t+\Delta-u)}du] 
+$$
+$$
 r(t+\Delta)=e^{-\alpha\Delta}r(t)+b(1-e^{-\alpha\Delta})+\frac{\sigma}{\sqrt{2\alpha}}\sqrt{1-e^{-2\alpha\Delta}}Z
 $$
 
@@ -124,7 +132,62 @@ legend("topleft", c("True","Estimated"), col = c("red","black"),cex = 1,lwd = 1)
 
 ```
 
-From the graphs showed above, we can clearly see that when $a(Y_n)=\alpha (b-r(t))=0$, this SDE became martingale. And more steps we take, higher density it gets, which means more accruate.
+From the graphs showed above, we can clearly see that when $a(Y_n)=\alpha (b-r(t))=0$, this SDE became martingale. And more steps we take, higher density it gets, which means more accurate.
 
+## 5.3.4 Poisson Process
 
+Let $\lambda (t) = \sqrt{t} + e^{-t} \sin (2\pi t)$ be the intensity function of Poisson process over $t \in [0, 5]$. Let $N(t)$ be the number of events by time t.
+
+#### 1. What is the distribution of $N(5)$ and its parameters
+Here we know $N(5)$ is a poisson distribution, so that the parameter is the integration of the given intensity function
+```{r}
+l <- function(t){
+  sqrt(t) + exp(-t) * sin(2* pi* t)
+}
+integrate(l,0,5)
+```
+Therefore, the result is $N(5) \sim Poisson(7.607738)$.
+
+#### 2. Write a function to simulate from this Poisson process
+Using the thinning algorithm method:
+Given $\lambda(t), t \in (0,5)$ ;
+Step 1. initialize $t=0, n=0, \lambda=Max \{\lambda(t)\}$ ;
+Step 2. set $t=t-\ln (Uni(0,1))/\lambda$, if $t>5$, then stop the process;
+Step 3. if Uni(0,1)<= $\lambda(t)/\lambda$, set n=n+1, $S_n=t$ ;
+Step 4. go to step 2;
+Step 5. output $S_n$.
+
+```{r}
+thinning <- function(lambda,T){
+ ##lambda is the upper bound
+l <- function(t){
+  sqrt(t) + exp(-t) * sin(2* pi* t)
+}
+t <- 0
+s <- c()
+while(t<=T){
+  if(runif(1)<=l(t)/lambda){s <- c(s,t)}
+  t.new=t-log(runif(1))/lambda
+  t <- t.new
+  }
+s
+}
+thinning(sqrt(5)+1,5)
+```
+
+#### 3. Generates events from this Poisson process 1000 times.
+
+Using the Kernel density $\lambda (t) \over \int_0 ^5 \lambda (s)$.
+```{r}
+m <- c()
+for (i in 1:1000){
+  m <- c(m,thinning(sqrt(5)+1,5))
+}
+l1 <- function(t){
+  (sqrt(t) + exp(-t) * sin(2* pi* t))/7.607738
+}
+plot(density(m),main = "Sampling")
+lines(seq(0,5,0.001),l1(seq(0,5,0.001)),col="red")
+legend("topleft", c("True","Estimated"), col = c("red","black"),cex = 1,lwd = 1)
+```
 
